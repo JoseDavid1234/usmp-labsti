@@ -1,7 +1,7 @@
 provider "aws" {
   region = "us-east-2"
-  access_key = "AKIAWPN6OSAYLYB6BM5D"
-  secret_key = "ODBlfredszoScgh6rj4O5sUVbA9aAHT5dyTiL2WP"
+  access_key = "XXXX"
+  secret_key = "XXXX"
 }
 
 resource "aws_launch_configuration" "example" {
