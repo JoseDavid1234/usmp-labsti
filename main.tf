@@ -24,6 +24,9 @@ resource "aws_autoscaling_group" "example" {
   launch_configuration = aws_launch_configuration.example.name
   vpc_zone_identifier = data.aws_subnets.default.ids
 
+  target_group_arns = [ aws_lb_target_group.asg.arn ]
+  health_check_type = "ELB"
+
   min_size = 2
   max_size = 10
 
@@ -50,9 +53,9 @@ variable "server_port" {
   default = 8080
 }
 
-output "public_ip" {
-  value=aws_instance.example.public_ip
-  description = "Esta es la ip pública del servidor web"
+output "alb_dns_name" {
+  value=aws_lb.example.dns_name
+  description = "El nombre de dominio del balanceador de carga"
 }
 
 data "aws_vpc" "default" {
@@ -70,6 +73,7 @@ resource "aws_lb" "example" {
   name = "terraform-asg-example"
   load_balancer_type = "application"
   subnets = data.aws_subnets.default.ids
+  security_groups = [ aws_security_group.alb.id ]
 }
 
 resource "aws_lb_listener" "http" {
@@ -100,5 +104,37 @@ resource "aws_security_group" "alb" {
     to_port = 0
     protocol = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_lb_target_group" "asg" {
+  name = "terraform-asg-example"
+  port = var.server_port
+  protocol = "HTTP"
+  vpc_id = data.aws_vpc.default.id
+  health_check {
+    path="/"
+    protocol = "HTTP"
+    matcher = "200"
+    interval = 15
+    timeout = 3
+    healthy_threshold = 2
+    unhealthy_threshold = 2
+  }
+}
+
+resource "aws_lb_listener_rule" "asg" {
+  listener_arn = aws_lb_listener.http.arn
+  priority = 100
+
+  condition {
+    path_pattern {
+      values = ["*"]
+    }
+  }
+  
+  action {
+    type = "forward"
+    target_group_arn = aws_lb_target_group.asg.arn
   }
 }
